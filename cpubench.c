@@ -80,6 +80,7 @@ int main(int argc, char *argv[]) {
         benchmark(&cpubench);
 
         double timed = time_spent(&cpubench.time_end) - time_spent(&cpubench.time_begin);
+        printf("\r[+] multi-threads unique thread score: %.3f\n", timed);
 
         #pragma omp atomic
         totaltime += timed;
