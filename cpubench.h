@@ -1,6 +1,8 @@
 #ifndef CPUBENCH_H
     #define CPUBENCH_H
 
+    #define CPUBENCH_VERSION  "0.1"
+
     uint64_t crc64(const uint8_t *data, size_t length);
 
     #define MB(x)   (x / (1024 * 1024.0))
