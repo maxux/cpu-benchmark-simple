@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
 
     }
 
-    verbose(COLOR_CYAN "[+] initializing grid-benchmark-simple client" COLOR_RESET "\n");
+    verbose(COLOR_CYAN "[+] initializing grid-benchmark-simple v%s client" COLOR_RESET "\n", CPUBENCH_VERSION);
     uint64_t seed = 0x0a0b0c0d12345ff0;
 
     verbose("[+] seed: 0x%016lx\n", seed);
