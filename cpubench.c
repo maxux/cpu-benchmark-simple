@@ -6,7 +6,17 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <getopt.h>
 #include "cpubench.h"
+
+int verbflag = 0;
+
+static struct option long_options[] = {
+    {"json",    no_argument, 0, 'j'},
+    {"verbose", no_argument, 0, 'v'},
+    {"help",    no_argument, 0, 'h'},
+    {0, 0, 0, 0}
+};
 
 typedef struct benchmark_t {
     struct timeval time_begin;
@@ -16,6 +26,8 @@ typedef struct benchmark_t {
     size_t length;
 
 } benchmark_t;
+
+#define verbose(...) { if(verbflag) { printf(__VA_ARGS__); } }
 
 void diep(char *str) {
     perror(str);
@@ -46,30 +58,59 @@ benchmark_t *benchmark(benchmark_t *source) {
 }
 
 int main(int argc, char *argv[]) {
-    printf(COLOR_CYAN "[+] initializing grid-cpu-benchmark-simple" COLOR_RESET "\n");
+    int option_index = 0;
+    int json = 0;
 
+    while(1) {
+        int i = getopt_long_only(argc, argv, "", long_options, &option_index);
+
+        if(i == -1)
+            break;
+
+        switch(i) {
+            case 'j':
+                json = 1;
+                break;
+
+            case 'v':
+                verbflag = 1;
+                break;
+
+            case 'h':
+                printf("Usage: %s [-jvh]\n\n", argv[0]);
+                printf(" -j     JSON output\n");
+                printf(" -v     Verbose output\n");
+                printf(" -h     This help message\n");
+                return 1;
+
+            case '?':
+            default:
+               exit(EXIT_FAILURE);
+        }
+
+    }
+
+    verbose(COLOR_CYAN "[+] initializing grid-benchmark-simple client" COLOR_RESET "\n");
     uint64_t seed = 0x0a0b0c0d12345ff0;
 
-    printf("[+] seed: 0x%016lx\n", seed);
+    verbose("[+] seed: 0x%016lx\n", seed);
 
     benchmark_t cpubench = {
         .seed = seed,
     };
 
     // single-thread
-    printf("[+] testing single-thread\n");
+    verbose("[+] testing single-thread\n");
     benchmark(&cpubench);
 
-    {
-    double timed = time_spent(&cpubench.time_end) - time_spent(&cpubench.time_begin);
-    printf("[+] single thread score: %.3f\n", timed);
-    }
+    double stimed = time_spent(&cpubench.time_end) - time_spent(&cpubench.time_begin);
+    verbose("[+] single thread score: %.3f\n", stimed);
 
     // multi-thread
     long cpucount = sysconf(_SC_NPROCESSORS_ONLN);
     double totaltime = 0;
 
-    printf("[+] testing multi-threads (%ld threads)\n", cpucount);
+    verbose("[+] testing multi-threads (%ld threads)\n", cpucount);
 
     #pragma omp parallel for num_threads(cpucount)
     for(long a = 0; a < cpucount; a++) {
@@ -79,14 +120,22 @@ int main(int argc, char *argv[]) {
 
         benchmark(&cpubench);
 
-        double timed = time_spent(&cpubench.time_end) - time_spent(&cpubench.time_begin);
-        printf("\r[+] multi-threads unique thread score: %.3f\n", timed);
+        double ltimed = time_spent(&cpubench.time_end) - time_spent(&cpubench.time_begin);
+        verbose("\r[+] multi-threads unique thread score: %.3f\n", ltimed);
 
         #pragma omp atomic
-        totaltime += timed;
+        totaltime += ltimed;
     }
 
-    printf("\r[+] multi-threads score: %.3f\n", totaltime);
+    verbose("\r[+] multi-threads score: %.3f\n", totaltime);
+
+    if(json) {
+        printf("{\"single\": %.3f, \"multi\": %.3f, \"threads\": %ld}\n", stimed, totaltime, cpucount);
+
+    } else {
+        printf("Single thread score: %.3f\n", stimed);
+        printf("Multi threads score: %.3f [%ld threads]\n", totaltime, cpucount);
+    }
 
     return 0;
 }
